@@ -36,7 +36,7 @@ curl -fSL -o "$FILENAME" "$URL"
 echo "Extracting ..."
 mkdir -p "$INSTALL_DIR"
 if [ "$EXT" = "zip" ]; then
-  python3 -c "
+  "${PYTHON:-python3}" -c "
 import zipfile, sys
 with zipfile.ZipFile('$FILENAME') as zf:
   for info in zf.infolist():

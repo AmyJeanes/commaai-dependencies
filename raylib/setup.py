@@ -25,7 +25,7 @@ class BuildRaylib(build_py):
     subprocess.check_call([sys.executable, "build_cffi.py"], cwd=PKG_DIR, env=env)
 
   def run(self):
-    subprocess.check_call(["bash", "build.sh"], cwd=PKG_DIR)
+    subprocess.check_call([shutil.which("bash") or "bash", "build.sh"], cwd=PKG_DIR)
 
     # Always regenerate CFFI extensions: the cached raylib source pin may have changed.
     for old_cffi in glob.glob(os.path.join(PKG_DIR, "raylib", "_raylib_cffi*")):
