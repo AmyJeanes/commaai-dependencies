@@ -1,6 +1,8 @@
 import os
 import platform
+import shutil
 import subprocess
+import sys
 
 from setuptools.command.build_py import build_py
 
@@ -16,7 +18,9 @@ class BuildImgui(build_py):
   def run(self):
     pkg_dir = os.path.dirname(os.path.abspath(__file__))
     build_script = os.path.join(pkg_dir, "build.sh")
-    subprocess.check_call(["bash", build_script], cwd=pkg_dir)
+    if os.name == "nt":
+      build_script = build_script.replace("\\", "/")  # MSYS2 bash treats backslashes as escapes
+    subprocess.check_call([shutil.which("bash") or "bash", build_script], cwd=pkg_dir, env={**os.environ, "PYTHON": sys.executable})
 
     super().run()
 
@@ -42,6 +46,8 @@ if bdist_wheel is not None:
         plat = os.environ.get("AUDITWHEEL_PLAT", f"linux_{machine}")
       elif system == "Darwin":
         plat = "macosx_11_0_arm64"
+      elif system == "Windows":
+        plat = "win_amd64" if machine in ("AMD64", "x86_64") else f"win_{machine.lower()}"
       else:
         plat = f"{system.lower()}_{machine}"
 

@@ -1,5 +1,7 @@
 import os
+import shutil
 import subprocess
+import sys
 
 from setuptools.command.build_py import build_py
 
@@ -10,7 +12,9 @@ class BuildBootstrapIcons(build_py):
   def run(self):
     pkg_dir = os.path.dirname(os.path.abspath(__file__))
     build_script = os.path.join(pkg_dir, "build.sh")
-    subprocess.check_call(["bash", build_script], cwd=pkg_dir)
+    if os.name == "nt":
+      build_script = build_script.replace("\\", "/")  # MSYS2 bash treats backslashes as escapes
+    subprocess.check_call([shutil.which("bash") or "bash", build_script], cwd=pkg_dir, env={**os.environ, "PYTHON": sys.executable})
 
     super().run()
 
