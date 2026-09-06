@@ -74,6 +74,9 @@ Windows PATH inherited (`clang64.exe -full-path`) so that Git for Windows and an
 `./setup.sh` installs the pacman packages and uv there. Scripts must stay LF: `.gitattributes` enforces it, an older
 checkout made with `core.autocrlf=true` needs a re-checkout.
 
+`libdatachannel-py/` is not one of our packages: it rebuilds Shiguredo's PyPI wheel for Windows, where PyPI has
+none, so that teleoprtc can be installed there. `./build.sh` runs it after the workspace packages; it is a no-op elsewhere.
+
 > [!NOTE]
 > PyPI does not allow overwriting an uploaded file, so every master commit publishes
 > fresh versions as `<package version>.postN`, where `N` is `git rev-list --count HEAD`
