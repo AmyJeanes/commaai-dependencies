@@ -70,6 +70,14 @@ to add a new package:
 `libdatachannel-py/` is not one of our packages: it rebuilds Shiguredo's PyPI wheel for Windows, where PyPI has
 none, so that teleoprtc can be installed there. `./build.sh` runs it after the workspace packages; it is a no-op elsewhere.
 
+### Windows
+
+`./build.sh` builds the win_amd64 wheels from an MSYS2 CLANG64 shell (`pacman -S mingw-w64-clang-x86_64-toolchain`
+and friends, see `setup.sh`). They are not on PyPI: `./publish_windows.sh` uploads `dist/` as a GitHub release named
+`windows-post<N>` after the `.postN` wheel versions, together with an `index.html` that uv consumes as a flat index
+(`[[tool.uv.index]]` with `format = "flat"`, see the release notes). Each release is immutable; a new build gets a new
+tag and the consumer points its index at that tag.
+
 > [!NOTE]
 > PyPI does not allow overwriting an uploaded file, so every master commit publishes
 > fresh versions as `<package version>.postN`, where `N` is `git rev-list --count HEAD`
