@@ -67,6 +67,9 @@ to add a new package:
 * `./build.sh` builds all packages, `./test_wheels_in_image.sh` tests the built wheels in a range of distros
 *  on pushes to `master`, wheels are built for our target platforms, tested, and published to PyPI
 
+`libdatachannel-py/` is not one of our packages: it rebuilds Shiguredo's PyPI wheel for Windows, where PyPI has
+none, so that teleoprtc can be installed there. `./build.sh` runs it after the workspace packages; it is a no-op elsewhere.
+
 > [!NOTE]
 > PyPI does not allow overwriting an uploaded file, so every master commit publishes
 > fresh versions as `<package version>.postN`, where `N` is `git rev-list --count HEAD`

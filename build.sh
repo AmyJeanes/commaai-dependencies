@@ -84,6 +84,8 @@ echo "Applying .post$POST_N package versions for this build"
 python3 build_versions.py apply "$POST_N" */pyproject.toml
 uv build --all-packages --wheel --out-dir dist --no-create-gitignore
 restore_build_versions
+# third-party wheel that PyPI lacks for Windows (no-op elsewhere)
+libdatachannel-py/build.sh
 
 if [[ -n "${BUILD_SH_IN_MANYLINUX:-}" ]]; then
   VENV_DIR="$ROOT_DIR/.venv-manylinux"
