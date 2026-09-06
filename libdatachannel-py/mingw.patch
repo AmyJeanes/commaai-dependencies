@@ -1,0 +1,69 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ba0479b..1bbfed1 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -55,7 +55,7 @@ set(MBEDTLS_BUILD_DIR "${DEPS_DIR}/mbedtls/${MBEDTLS_TAG}/build")
+ set(MBEDTLS_INSTALL_DIR "${DEPS_DIR}/mbedtls/${MBEDTLS_TAG}/install")
+ 
+ # Windows では .lib、それ以外では .a
+-if(WIN32)
++if(MSVC)
+   set(MBEDTLS_LIB ${MBEDTLS_INSTALL_DIR}/lib/mbedtls.lib)
+ else()
+   set(MBEDTLS_LIB ${MBEDTLS_INSTALL_DIR}/lib/libmbedtls.a)
+@@ -103,7 +103,7 @@ set(LIBDATACHANNEL_BUILD_DIR "${DEPS_DIR}/libdatachannel/${LIBDATACHANNEL_TAG}/b
+ set(LIBDATACHANNEL_INSTALL_DIR "${DEPS_DIR}/libdatachannel/${LIBDATACHANNEL_TAG}/install")
+ 
+ # Windows では .lib、それ以外では .a
+-if(WIN32)
++if(MSVC)
+   set(LIBDATACHANNEL_LIB ${LIBDATACHANNEL_INSTALL_DIR}/lib/datachannel.lib)
+ else()
+   set(LIBDATACHANNEL_LIB ${LIBDATACHANNEL_INSTALL_DIR}/lib/libdatachannel.a)
+@@ -169,7 +169,7 @@ target_include_directories(libdatachannel_ext PRIVATE
+ 
+ # ライブラリをリンク
+ # libdatachannel とその依存ライブラリ、MbedTLS とその依存ライブラリをリンク
+-if(WIN32)
++if(MSVC)
+   target_link_libraries(libdatachannel_ext PRIVATE
+     "${LIBDATACHANNEL_LIB}"
+     "${LIBDATACHANNEL_INSTALL_DIR}/lib/libjuice.lib"
+@@ -198,13 +198,21 @@ if(APPLE)
+       "-framework CoreFoundation"
+   )
+ elseif(WIN32)
+-  # 文字コードを utf-8 として扱うのと、シンボルテーブル数を増やす
+-  target_compile_options(libdatachannel_ext PRIVATE /utf-8 /bigobj)
+-  # CRTライブラリを静的リンクさせる
+-  set_property(TARGET libdatachannel_ext PROPERTY
+-    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+-  set_property(TARGET nanobind-static PROPERTY
+-    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
++  if(MSVC)
++    # 文字コードを utf-8 として扱うのと、シンボルテーブル数を増やす
++    target_compile_options(libdatachannel_ext PRIVATE /utf-8 /bigobj)
++    # CRTライブラリを静的リンクさせる
++    set_property(TARGET libdatachannel_ext PROPERTY
++      MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
++    set_property(TARGET nanobind-static PROPERTY
++      MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
++  else()
++    # MinGW: the static libraries do not carry their system dependencies, and the module must not need libc++/winpthreads DLLs.
++    # RTC_STATIC keeps the headers from declaring dllimport symbols, which lld (unlike MSVC) cannot resolve from a static library.
++    target_compile_definitions(libdatachannel_ext PRIVATE RTC_STATIC)
++    target_link_libraries(libdatachannel_ext PRIVATE ws2_32 iphlpapi bcrypt crypt32)
++    target_link_options(libdatachannel_ext PRIVATE -static)
++  endif()
+   target_compile_definitions(libdatachannel_ext
+     PRIVATE
+       _CONSOLE
+@@ -216,7 +224,7 @@ elseif(WIN32)
+ endif()
+ 
+ # コンパイルオプション
+-if(NOT WIN32)
++if(NOT MSVC)
+   target_compile_options(libdatachannel_ext PRIVATE -fvisibility=hidden)
+ endif()
+ 
