@@ -48,7 +48,6 @@ esac
 cd ncurses-src
 CFLAGS="-fPIC" ./configure \
   --prefix="$PREFIX" \
-  "${EXTRA_CONFIGURE[@]}" \
   --without-shared \
   --with-normal \
   --without-debug \
