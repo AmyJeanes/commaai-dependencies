@@ -1,0 +1,54 @@
+# Fork only: comma publishes wheels to PyPI from ci.yml, which this fork cannot do, so a push to `windows-dev` that
+# can change a wheel builds the win_amd64 wheels and publishes them as a GitHub release for openpilot's
+# `comma-deps-windows` index. `windows` carries the upstreamable prefix of this branch and is what the PR comes from.
+name: windows release
+
+on:
+  push:
+    branches: [windows-dev]
+    paths-ignore:
+      - ".github/**"
+      - "README.md"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: build and release (windows-x86_64)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # full history for `git rev-list --count` versioning
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: CLANG64
+          path-type: inherit
+      - uses: actions/cache@v6
+        with:
+          key: ccache-windows-x86_64-${{ github.run_id }}
+          restore-keys: ccache-windows-x86_64-
+          path: .ccache
+      - uses: actions/cache@v6
+        with:
+          key: downloads-windows-x86_64-${{ hashFiles('gcc-arm-none-eabi/build.sh', 'git-lfs/build.sh') }}
+          path: |
+            .uv-cache
+            */*/toolchain
+            */*/bin
+      - name: Install MSYS2 build dependencies
+        run: |
+          ./setup.sh
+          cygpath -w "$HOME/.local/bin" >> "$GITHUB_PATH" # where setup.sh installs uv
+      - name: Build wheels
+        env:
+          UV_CACHE_DIR: ${{ github.workspace }}/.uv-cache
+        run: ./build.sh
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./publish_windows.sh
