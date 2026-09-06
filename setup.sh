@@ -20,7 +20,7 @@ elif [ "${MSYSTEM:-}" = "CLANG64" ]; then
   pacman -S --needed --noconfirm \
     "$MINGW_PACKAGE_PREFIX-toolchain" "$MINGW_PACKAGE_PREFIX-cmake" "$MINGW_PACKAGE_PREFIX-ninja" \
     "$MINGW_PACKAGE_PREFIX-pkgconf" "$MINGW_PACKAGE_PREFIX-ccache" "$MINGW_PACKAGE_PREFIX-nasm" \
-    make autotools git patch
+    make autotools patch unzip  # unzip: the uv installer; git is Git for Windows on the inherited PATH
 elif [ -n "${MSYSTEM:-}" ]; then
   echo "error: the Windows wheels are built with clang, lld and libc++ from an MSYS2 CLANG64 shell, not $MSYSTEM" >&2
   exit 1

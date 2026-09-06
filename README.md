@@ -69,10 +69,10 @@ to add a new package:
 
 ### Windows
 
-`./build.sh` builds the win_amd64 wheels from an [MSYS2](https://www.msys2.org/) CLANG64 shell; `./setup.sh` installs
-the pacman packages and uv there (an existing Windows uv is only visible in that shell with `MSYS2_PATH_TYPE=inherit`
-or its directory on PATH). Scripts must stay LF: `.gitattributes` enforces it, an older checkout made with
-`core.autocrlf=true` needs a re-checkout.
+`./build.sh` builds the win_amd64 wheels from an [MSYS2](https://www.msys2.org/) CLANG64 shell started with the
+Windows PATH inherited (`clang64.exe -full-path`) so that Git for Windows and any existing uv are visible in it;
+`./setup.sh` installs the pacman packages and uv there. Scripts must stay LF: `.gitattributes` enforces it, an older
+checkout made with `core.autocrlf=true` needs a re-checkout.
 
 > [!NOTE]
 > PyPI does not allow overwriting an uploaded file, so every master commit publishes
