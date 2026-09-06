@@ -44,7 +44,7 @@ def smoketest():
   capnpc = os.path.join(BIN_DIR, "capnpc")
   capnpc_cpp = os.path.join(BIN_DIR, "capnpc-c++")
   env = os.environ.copy()
-  env["PATH"] = BIN_DIR + ":" + env.get("PATH", "")
+  env["PATH"] = BIN_DIR + os.pathsep + env.get("PATH", "")
   subprocess.run([capnp, "--version"], check=True, env=env)
   subprocess.run([capnpc, "--version"], check=True, env=env)
   subprocess.run([capnpc_cpp, "--version"], check=True, env=env)
