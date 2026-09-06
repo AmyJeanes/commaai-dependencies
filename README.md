@@ -77,10 +77,11 @@ checkout made with `core.autocrlf=true` needs a re-checkout.
 `libdatachannel-py/` is not one of our packages: it rebuilds Shiguredo's PyPI wheel for Windows, where PyPI has
 none, so that teleoprtc can be installed there. `./build.sh` runs it after the workspace packages; it is a no-op elsewhere.
 
-The Windows wheels are not on PyPI: `./publish_windows.sh` uploads `dist/` as a GitHub release named
-`windows-post<N>` after the `.postN` wheel versions, together with an `index.html` that uv consumes as a flat index
-(`[[tool.uv.index]]` with `format = "flat"`, see the release notes). Each release is immutable; a new build gets a new
-tag and the consumer points its index at that tag.
+This fork cannot publish to PyPI, so the `windows release` workflow builds the wheels on every push to `windows-dev`
+that can change them and runs `./publish_windows.sh`, which uploads `dist/` as a GitHub release named `windows-post<N>` after the `.postN`
+wheel versions, together with an `index.html` that uv consumes as a flat index (`[[tool.uv.index]]` with
+`format = "flat"`, see the release notes). Each release is immutable; a new build gets a new tag and the consumer
+points its index at that tag. The script also runs locally from a clean, pushed CLANG64 checkout with `gh` logged in.
 
 > [!NOTE]
 > PyPI does not allow overwriting an uploaded file, so every master commit publishes
