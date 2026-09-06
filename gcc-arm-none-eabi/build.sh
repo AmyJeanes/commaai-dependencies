@@ -25,6 +25,7 @@ case "${OS}-${ARCH}" in
   Linux-x86_64)   PLATFORM_SUFFIX="x86_64" ;;
   Linux-aarch64)  PLATFORM_SUFFIX="aarch64" ;;
   Darwin-arm64)   PLATFORM_SUFFIX="darwin-arm64" ;;
+  MINGW*-x86_64|MSYS*-x86_64) PLATFORM_SUFFIX="mingw-w64-i686" ; WINDOWS=1 ; EXE=".exe" ;;
   *)
     echo "Unsupported platform: ${OS}-${ARCH}" >&2
     exit 1
@@ -32,6 +33,7 @@ case "${OS}-${ARCH}" in
 esac
 
 TARBALL="${TOOLCHAIN_BASE}-${PLATFORM_SUFFIX}-arm-none-eabi.tar.xz"
+[ -n "${WINDOWS:-}" ] && TARBALL="${TOOLCHAIN_BASE}-${PLATFORM_SUFFIX}-arm-none-eabi.zip"
 URL="https://developer.arm.com/-/media/Files/downloads/gnu/${TOOLCHAIN_VERSION}/binrel/${TARBALL}"
 
 # Download
@@ -40,7 +42,11 @@ curl -fSL -o "$TARBALL" "$URL"
 
 # Extract (use Python's lzma to avoid requiring xz-utils on the host)
 echo "Extracting ..."
-"${PYTHON:-python3}" -c "import lzma, tarfile; tarfile.open(fileobj=lzma.open('$TARBALL')).extractall()"
+if [ -n "${WINDOWS:-}" ]; then
+  "${PYTHON:-python3}" -c "import zipfile; zipfile.ZipFile('$TARBALL').extractall()"
+else
+  "${PYTHON:-python3}" -c "import lzma, tarfile; tarfile.open(fileobj=lzma.open('$TARBALL')).extractall()"
+fi
 EXTRACT_DIR=$(ls -d arm-gnu-toolchain-*-${PLATFORM_SUFFIX}-arm-none-eabi)
 
 SRC="$DIR/$EXTRACT_DIR"
@@ -51,16 +57,18 @@ mkdir -p "$INSTALL_DIR"
 # --- bin: only the tools directly used by SConscript ---
 mkdir -p "$INSTALL_DIR/bin"
 for tool in gcc objcopy size; do
-  if [ -f "$SRC/bin/arm-none-eabi-$tool" ]; then
-    cp "$SRC/bin/arm-none-eabi-$tool" "$INSTALL_DIR/bin/"
+  if [ -f "$SRC/bin/arm-none-eabi-$tool${EXE:-}" ]; then
+    cp "$SRC/bin/arm-none-eabi-$tool${EXE:-}" "$INSTALL_DIR/bin/"
   fi
 done
+# the Windows host binaries need their runtime DLLs shipped next to them
+cp "$SRC"/bin/*.dll "$INSTALL_DIR/bin/" 2>/dev/null || true
 
 # --- libexec: cc1 and collect2 (needed by gcc driver) ---
 LIBEXEC_SRC="$SRC/libexec/gcc/arm-none-eabi/$GCC_VERSION"
 LIBEXEC_DST="$INSTALL_DIR/libexec/gcc/arm-none-eabi/$GCC_VERSION"
 mkdir -p "$LIBEXEC_DST"
-for f in cc1 collect2 liblto_plugin.so liblto_plugin.0.so; do
+for f in cc1${EXE:-} collect2${EXE:-} liblto_plugin.so liblto_plugin.0.so liblto_plugin.dll; do
   if [ -f "$LIBEXEC_SRC/$f" ]; then
     cp "$LIBEXEC_SRC/$f" "$LIBEXEC_DST/"
   fi
@@ -71,8 +79,8 @@ ARM_SRC="$SRC/arm-none-eabi"
 ARM_DST="$INSTALL_DIR/arm-none-eabi"
 mkdir -p "$ARM_DST/bin"
 for tool in as ld ld.bfd; do
-  if [ -f "$ARM_SRC/bin/$tool" ]; then
-    cp "$ARM_SRC/bin/$tool" "$ARM_DST/bin/"
+  if [ -f "$ARM_SRC/bin/$tool${EXE:-}" ]; then
+    cp "$ARM_SRC/bin/$tool${EXE:-}" "$ARM_DST/bin/"
   fi
 done
 

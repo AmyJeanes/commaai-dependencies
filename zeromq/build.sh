@@ -21,7 +21,13 @@ git -C libzmq-src checkout --force FETCH_HEAD
 PREFIX="$DIR/build/prefix"
 mkdir -p "$DIR/build"
 
-cmake -S libzmq-src -B "$DIR/build" \
+EXTRA_CMAKE=()
+case "$(uname -s)" in
+  # libzmq only knows afunix.h under _MSC_VER; openpilot uses tcp:// on Windows anyway
+  MINGW*|MSYS*|CYGWIN*) EXTRA_CMAKE=(-DZMQ_HAVE_IPC=OFF) ;;
+esac
+
+cmake -S libzmq-src -B "$DIR/build" "${EXTRA_CMAKE[@]}" \
   -DCMAKE_BUILD_TYPE=MinSizeRel \
   -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
   -DCMAKE_INSTALL_PREFIX="$PREFIX" \

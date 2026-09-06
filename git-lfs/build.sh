@@ -21,6 +21,7 @@ case "${OS}-${ARCH}" in
   Linux-x86_64)   PLATFORM="linux-amd64"  ; EXT="tar.gz" ;;
   Linux-aarch64)  PLATFORM="linux-arm64"   ; EXT="tar.gz" ;;
   Darwin-arm64)   PLATFORM="darwin-arm64"  ; EXT="zip" ;;
+  MINGW*-x86_64|MSYS*-x86_64) PLATFORM="windows-amd64" ; EXT="zip" ; EXE=".exe" ;;
   *)
     echo "Unsupported platform: ${OS}-${ARCH}" >&2
     exit 1
@@ -36,12 +37,15 @@ curl -fSL -o "$FILENAME" "$URL"
 echo "Extracting ..."
 mkdir -p "$INSTALL_DIR"
 if [ "$EXT" = "zip" ]; then
+  # Windows Python cannot open MSYS-style /c/... paths
+  PY_INSTALL_DIR="$INSTALL_DIR"
+  command -v cygpath >/dev/null 2>&1 && PY_INSTALL_DIR="$(cygpath -m "$INSTALL_DIR")"
   "${PYTHON:-python3}" -c "
 import zipfile, sys
 with zipfile.ZipFile('$FILENAME') as zf:
   for info in zf.infolist():
-    if info.filename.endswith('/git-lfs'):
-      with open('$INSTALL_DIR/git-lfs', 'wb') as f:
+    if info.filename.endswith('/git-lfs${EXE:-}'):
+      with open('$PY_INSTALL_DIR/git-lfs${EXE:-}', 'wb') as f:
         f.write(zf.read(info))
       break
 "
@@ -49,7 +53,7 @@ else
   tar --strip-components=1 -xzf "$FILENAME" -C "$INSTALL_DIR" --wildcards '*/git-lfs'
 fi
 
-chmod +x "$INSTALL_DIR/git-lfs"
+chmod +x "$INSTALL_DIR/git-lfs${EXE:-}"
 
 rm -f "$FILENAME"
 echo "$VERSION" > "$VERSION_FILE"

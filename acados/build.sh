@@ -15,7 +15,12 @@ NJOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
 
 # pick BLAS target per host arch
 ARCH="$(uname -m)"
-if [[ "$OSTYPE" == "darwin"* ]]; then
+WINDOWS=""
+case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) WINDOWS=1 ;; esac
+if [ -n "$WINDOWS" ]; then
+  # BLASFEO's x86 assembly kernels assume the SysV calling convention; use the C fallback on Windows
+  BLAS_TARGET="GENERIC"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
   # this BLASFEO version doesn't have an Apple Silicon target; Cortex-A57
   # baseline ARMv8 SIMD compiles and runs fine on M1+.
   BLAS_TARGET="ARMV8A_ARM_CORTEX_A57"
@@ -41,6 +46,9 @@ ACADOS_FLAGS=(
   # (pinned) sources keep compiling.
   "-DCMAKE_C_FLAGS=-Wno-implicit-function-declaration -Wno-incompatible-pointer-types"
 )
+if [ -n "$WINDOWS" ]; then
+  ACADOS_FLAGS+=(-DHPIPM_TARGET=GENERIC)
+fi
 if [[ "$OSTYPE" == "darwin"* ]]; then
   ACADOS_FLAGS+=(
     -DCMAKE_OSX_ARCHITECTURES=arm64
@@ -61,7 +69,7 @@ git -C acados-src submodule update --init --recursive --depth=1
 mkdir -p build
 cd build
 cmake "${ACADOS_FLAGS[@]}" "$DIR/acados-src"
-make -j"$NJOBS" install
+cmake --build . -j"$NJOBS" --target install
 cd "$DIR"
 
 # we don't ship sample json templates
@@ -87,24 +95,30 @@ if [ -f "$TEMPLATE_DIR/gnsf/check_reformulation.py" ]; then
 fi
 
 # build tera renderer (needs cargo)
-if ! command -v cargo >/dev/null 2>&1; then
+if [ -n "$WINDOWS" ]; then
+  # no rust toolchain requirement on Windows: fetch the release binary acados_template pins
+  TERA_VERSION="$(sed -n 's/^TERA_VERSION *= *"\(.*\)"/\1/p' "$TEMPLATE_DIR/utils.py" | head -1)"
+  mkdir -p "$INSTALL_DIR/bin"
+  curl -fSL -o "$INSTALL_DIR/bin/t_renderer.exe" "https://github.com/acados/tera_renderer/releases/download/v${TERA_VERSION}/t_renderer-v${TERA_VERSION}-windows"
+elif ! command -v cargo >/dev/null 2>&1; then
   echo "installing rust toolchain (needed for tera_renderer)..."
   curl -LsSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
   # shellcheck disable=SC1091
   source "$HOME/.cargo/env"
 fi
 
-mkdir -p "$INSTALL_DIR/bin"
-cd "$DIR/acados-src/interfaces/acados_template/tera_renderer/"
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  cargo build --release --target aarch64-apple-darwin
-  cp target/aarch64-apple-darwin/release/t_renderer "$INSTALL_DIR/bin/t_renderer"
-else
-  cargo build --release
-  cp target/release/t_renderer "$INSTALL_DIR/bin/t_renderer"
+if [ -z "$WINDOWS" ]; then
+  mkdir -p "$INSTALL_DIR/bin"
+  cd "$DIR/acados-src/interfaces/acados_template/tera_renderer/"
+  if [[ "$OSTYPE" == "darwin"* ]]; then
+    cargo build --release --target aarch64-apple-darwin
+    cp target/aarch64-apple-darwin/release/t_renderer "$INSTALL_DIR/bin/t_renderer"
+  else
+    cargo build --release
+    cp target/release/t_renderer "$INSTALL_DIR/bin/t_renderer"
+  fi
+  cd "$DIR"
 fi
-
-cd "$DIR"
 
 # vendor a slim casadi: install the upstream wheel into a throwaway cp312 venv
 # (uv resolves the right platform wheel automatically), then move the casadi/
@@ -112,8 +126,13 @@ cd "$DIR"
 echo "vendoring casadi $CASADI_VERSION ..."
 rm -rf "$CASADI_DIR" casadi-venv
 uv venv --python 3.12 --quiet casadi-venv
-uv pip install --python casadi-venv/bin/python --no-deps --quiet "casadi==$CASADI_VERSION"
-mv casadi-venv/lib/python3.12/site-packages/casadi "$CASADI_DIR"
+if [ -n "$WINDOWS" ]; then
+  uv pip install --python casadi-venv/Scripts/python.exe --no-deps --quiet "casadi==$CASADI_VERSION"
+  mv casadi-venv/Lib/site-packages/casadi "$CASADI_DIR"
+else
+  uv pip install --python casadi-venv/bin/python --no-deps --quiet "casadi==$CASADI_VERSION"
+  mv casadi-venv/lib/python3.12/site-packages/casadi "$CASADI_DIR"
+fi
 rm -rf casadi-venv
 
 # drop everything except the bits openpilot actually needs:
@@ -127,7 +146,7 @@ rm -rf casadi-venv
 cd "$CASADI_DIR"
 shopt -s extglob
 # libc++.*.dylib only exists on darwin and is needed by _casadi.so via @rpath
-rm -rf !(__init__.py|casadi.py|_casadi.so|tools|libcasadi.*|libc++.*)
+rm -rf !(__init__.py|casadi.py|_casadi.so|_casadi.pyd|tools|libcasadi.*|libc++.*|*.dll)
 shopt -u extglob
 
 cd "$DIR"
