@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ (github.repository == 'commaai/dependencies' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == 'commaai/dependencies')) && matrix.runs-on-namespace || matrix.runs-on }}
     defaults:
       run:
-        shell: ${{ matrix.shell }}
+        shell: ${{ matrix.shell || 'bash -e {0}' }} # the implicit default; a bare `bash` would add pipefail
     strategy:
       fail-fast: false
       matrix:
@@ -19,15 +19,12 @@ jobs:
           - platform: linux-x86_64
             runs-on: ubuntu-latest
             runs-on-namespace: namespace-profile-amd64-8x16
-            shell: bash -e {0} # GitHub's implicit default; a bare `bash` would add pipefail
           - platform: linux-arm64
             runs-on: ubuntu-24.04-arm
             runs-on-namespace: namespace-profile-arm64-big
-            shell: bash -e {0}
           - platform: macos
             runs-on: macos-latest
             runs-on-namespace: namespace-profile-macos-8x14
-            shell: bash -e {0}
           - platform: windows-x86_64
             runs-on: windows-latest
             shell: msys2 {0} # the CLANG64 shell from setup-msys2 below
