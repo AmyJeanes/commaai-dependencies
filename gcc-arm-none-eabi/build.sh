@@ -25,6 +25,7 @@ case "${OS}-${ARCH}" in
   Linux-x86_64)   PLATFORM_SUFFIX="x86_64" ;;
   Linux-aarch64)  PLATFORM_SUFFIX="aarch64" ;;
   Darwin-arm64)   PLATFORM_SUFFIX="darwin-arm64" ;;
+  # ARM's only Windows host build is 32-bit
   MINGW*-x86_64|MSYS*-x86_64) PLATFORM_SUFFIX="mingw-w64-i686" ; WINDOWS=1 ; EXE=".exe" ;;
   *)
     echo "Unsupported platform: ${OS}-${ARCH}" >&2

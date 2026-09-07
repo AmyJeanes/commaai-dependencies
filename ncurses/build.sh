@@ -11,19 +11,6 @@ VERSION_FILE="$DIR/ncurses-src/.version"
 NJOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
 export CC="ccache ${CC:-cc}"
 
-# Download tarball (v6.5 tag doesn't exist on the GitHub mirror)
-if [ ! -f "$VERSION_FILE" ] || [ "$(cat "$VERSION_FILE")" != "$VERSION" ]; then
-  rm -rf ncurses-src
-  mkdir -p ncurses-src
-  curl -fSL "https://ftp.gnu.org/gnu/ncurses/ncurses-${VERSION}.tar.gz" \
-    | tar xz --strip-components=1 -C ncurses-src
-  echo "$VERSION" > "$VERSION_FILE"
-fi
-
-# Build
-PREFIX="$DIR/build/prefix"
-mkdir -p "$DIR/build"
-
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*)
     # ncurses does not build cleanly for the Windows console with mingw; ship PDCurses'
@@ -45,6 +32,20 @@ case "$(uname -s)" in
     exit 0
     ;;
 esac
+
+# Download tarball (v6.5 tag doesn't exist on the GitHub mirror)
+if [ ! -f "$VERSION_FILE" ] || [ "$(cat "$VERSION_FILE")" != "$VERSION" ]; then
+  rm -rf ncurses-src
+  mkdir -p ncurses-src
+  curl -fSL "https://ftp.gnu.org/gnu/ncurses/ncurses-${VERSION}.tar.gz" \
+    | tar xz --strip-components=1 -C ncurses-src
+  echo "$VERSION" > "$VERSION_FILE"
+fi
+
+# Build
+PREFIX="$DIR/build/prefix"
+mkdir -p "$DIR/build"
+
 cd ncurses-src
 CFLAGS="-fPIC" ./configure \
   --prefix="$PREFIX" \

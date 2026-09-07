@@ -126,7 +126,8 @@ make distclean >/dev/null 2>&1 || true
 # Platform-specific hardware acceleration flags
 HW_FLAGS=()
 LOADER_FLAGS=()
-# Windows: static libs, so consumers need no DLL search path handling
+# Windows: static libs, so consumers need no DLL search path handling; with only the file and pipe protocols
+# enabled the network layer is dead weight that would make winsock a link dependency of every consumer
 LINK_FLAGS=(--disable-static --enable-shared)
 if [ -n "${WINDOWS:-}" ]; then
   LINK_FLAGS=(--enable-static --disable-shared --disable-network)
