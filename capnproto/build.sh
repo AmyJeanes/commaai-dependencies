@@ -8,7 +8,9 @@ VERSION="1.0.1"
 INSTALL_DIR="$DIR/capnproto/install"
 WINDOWS=""
 EXE=""
-case "$(uname -s)" in MINGW*|MSYS*) WINDOWS=1; EXE=".exe" ;; esac
+EXE_LINKER_FLAGS=""
+# static libc++ so the tools run outside an MSYS2 shell (no libc++.dll on PATH)
+case "$(uname -s)" in MINGW*|MSYS*) WINDOWS=1; EXE=".exe"; EXE_LINKER_FLAGS="-static" ;; esac
 
 NJOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
 
@@ -34,7 +36,8 @@ cmake -S capnproto-src -B "$DIR/build" \
   -DCMAKE_CXX_FLAGS="-fPIC" \
   -DWITH_OPENSSL=OFF \
   -DBUILD_TESTING=OFF \
-  -DBUILD_SHARED_LIBS=OFF
+  -DBUILD_SHARED_LIBS=OFF \
+  -DCMAKE_EXE_LINKER_FLAGS="$EXE_LINKER_FLAGS"
 
 cmake --build "$DIR/build" -j"$NJOBS"
 cmake --install "$DIR/build"
