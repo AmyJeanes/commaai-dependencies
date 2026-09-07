@@ -6,6 +6,9 @@ cd "$DIR"
 
 VERSION="1.0.1"
 INSTALL_DIR="$DIR/capnproto/install"
+WINDOWS=""
+EXE=""
+case "$(uname -s)" in MINGW*|MSYS*) WINDOWS=1; EXE=".exe" ;; esac
 
 NJOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
 
@@ -41,9 +44,13 @@ rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"/{bin,lib,include}
 
 # Binaries
-cp "$PREFIX/bin/capnp" "$INSTALL_DIR/bin/"
-cp "$PREFIX/bin/capnpc-c++" "$INSTALL_DIR/bin/"
-ln -sf capnp "$INSTALL_DIR/bin/capnpc"
+cp "$PREFIX/bin/capnp$EXE" "$INSTALL_DIR/bin/"
+cp "$PREFIX/bin/capnpc-c++$EXE" "$INSTALL_DIR/bin/"
+if [ -n "$WINDOWS" ]; then
+  cp "$INSTALL_DIR/bin/capnp$EXE" "$INSTALL_DIR/bin/capnpc$EXE"
+else
+  ln -sf capnp "$INSTALL_DIR/bin/capnpc"
+fi
 
 # Libraries (only the ones openpilot needs)
 cp "$PREFIX/lib/libcapnp.a" "$INSTALL_DIR/lib/"
@@ -54,7 +61,7 @@ cp -r "$PREFIX/include/capnp" "$INSTALL_DIR/include/"
 cp -r "$PREFIX/include/kj" "$INSTALL_DIR/include/"
 
 # Strip binaries and libs
-strip "$INSTALL_DIR/bin/capnp" "$INSTALL_DIR/bin/capnpc-c++" 2>/dev/null || true
+strip "$INSTALL_DIR/bin/capnp$EXE" "$INSTALL_DIR/bin/capnpc-c++$EXE" 2>/dev/null || true
 
 # Strip unused kj objects from libkj.a (not needed by openpilot)
 for obj in filesystem.c++.o main.c++.o test-helpers.c++.o; do

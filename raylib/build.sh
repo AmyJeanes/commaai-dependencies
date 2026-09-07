@@ -9,6 +9,9 @@ INSTALL_DIR="$DIR/raylib/install"
 NJOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
 CC="ccache ${CC:-cc}" CXX="ccache ${CXX:-c++}"
 
+WINDOWS=""
+case "$(uname -s)" in MINGW*|MSYS*) WINDOWS=1 ;; esac
+
 is_linux_aarch64() {
   [[ "$(uname)" == "Linux" && ( "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ) ]]
 }
@@ -59,7 +62,13 @@ build_raylib() {
   local output="$2"
 
   cd "$DIR/raylib-src/src"
-  make clean
+  if [ -n "$WINDOWS" ]; then
+    # raylib's Makefile keys Windows off $OS and cleans with cmd.exe `del`, which MSYS2 bash lacks
+    export OS=Windows_NT
+    rm -f ./*.o libraylib.a
+  else
+    make clean
+  fi
   make -j"$NJOBS" PLATFORM="$platform" CC="${CC:-gcc}"
   cp libraylib.a "$INSTALL_DIR/lib/$output"
   cd "$DIR"

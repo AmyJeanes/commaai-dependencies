@@ -7,8 +7,15 @@ LIB_DIR = os.path.join(DIR, "lib")
 INCLUDE_DIR = os.path.join(DIR, "include")
 
 
+EXE = ".exe" if os.name == "nt" else ""
+
+
 def _run(name):
-  binary = os.path.join(BIN_DIR, name)
+  binary = os.path.join(BIN_DIR, name + EXE)
+  if os.name == "nt":  # no process replacement on Windows; run and forward the exit code
+    import subprocess
+
+    sys.exit(subprocess.call([binary] + sys.argv[1:]))
   os.execvp(binary, [binary] + sys.argv[1:])
 
 
@@ -23,7 +30,7 @@ def _run_ffprobe():
 def smoketest():
   import subprocess
 
-  ffmpeg = os.path.join(BIN_DIR, "ffmpeg")
-  ffprobe = os.path.join(BIN_DIR, "ffprobe")
+  ffmpeg = os.path.join(BIN_DIR, "ffmpeg" + EXE)
+  ffprobe = os.path.join(BIN_DIR, "ffprobe" + EXE)
   subprocess.run([ffmpeg, "-version"], check=True)
   subprocess.run([ffprobe, "-version"], check=True)

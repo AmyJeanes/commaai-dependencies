@@ -11,10 +11,16 @@ X264_BRANCH="stable"
 LIBDRM_VERSION="libdrm-2.4.124"
 LIBVA_VERSION="2.22.0"
 INSTALL_DIR="$DIR/ffmpeg/install"
+WINDOWS=""
+EXE=""
+case "$(uname -s)" in MINGW*|MSYS*) WINDOWS=1; EXE=".exe" ;; esac
 
 NJOBS="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
 export CC="ccache ${CC:-cc}"
 PREFIX="$DIR/build/prefix"
+# native pkgconf/clang on Windows need C:/ style paths, not MSYS /c/ ones
+PREFIX_NATIVE="$PREFIX"
+if [ -n "$WINDOWS" ]; then PREFIX_NATIVE="$(cygpath -m "$PREFIX")"; fi
 mkdir -p "$DIR/build"
 rm -rf "$PREFIX"
 mkdir -p "$PREFIX"
@@ -28,7 +34,7 @@ git -C zlib-src fetch --depth 1 origin "$ZLIB_VERSION"
 git -C zlib-src checkout --force "$ZLIB_VERSION"
 
 cd zlib-src
-./configure --prefix="$PREFIX" --static
+./configure --prefix="$PREFIX_NATIVE" --static
 make -j"$NJOBS"
 make install
 cd "$DIR"
@@ -43,7 +49,7 @@ git -C x264-src checkout --force FETCH_HEAD
 
 cd x264-src
 CFLAGS="-fno-finite-math-only" ./configure \
-  --prefix="$PREFIX" \
+  --prefix="$PREFIX_NATIVE" \
   --enable-static \
   --disable-shared \
   --disable-cli \
@@ -121,6 +127,12 @@ make distclean >/dev/null 2>&1 || true
 # Platform-specific hardware acceleration flags
 HW_FLAGS=()
 LOADER_FLAGS=()
+# Windows: static libs, so consumers need no DLL search path handling; with only the file and pipe protocols
+# enabled the network layer is dead weight that would make winsock a link dependency of every consumer
+LINK_FLAGS=(--disable-static --enable-shared)
+if [ -n "$WINDOWS" ]; then
+  LINK_FLAGS=(--enable-static --disable-shared --disable-network)
+fi
 FFMPEG_LDEXEFLAGS=
 FFMPEG_LDSOFLAGS=
 if [ "$PLATFORM" = "Linux" ]; then
@@ -164,15 +176,17 @@ elif [ "$PLATFORM" = "Darwin" ]; then
   )
 fi
 
-PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" \
+# native pkgconf on Windows splits on ";" so the inherited ":"-separated MSYS2 path must not be appended
+FFMPEG_PKG_CONFIG_PATH="$PREFIX_NATIVE/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+[ -n "$WINDOWS" ] && FFMPEG_PKG_CONFIG_PATH="$PREFIX_NATIVE/lib/pkgconfig"
+PKG_CONFIG_PATH="$FFMPEG_PKG_CONFIG_PATH" \
 LDEXEFLAGS="$FFMPEG_LDEXEFLAGS" \
 LDSOFLAGS="$FFMPEG_LDSOFLAGS" \
 ./configure \
   --cc="${CC:-cc}" \
-  --prefix="$PREFIX" \
+  --prefix="$PREFIX_NATIVE" \
   --enable-gpl \
-  --disable-static \
-  --enable-shared \
+  "${LINK_FLAGS[@]}" \
   --enable-zlib \
   --enable-libx264 \
   --enable-pic \
@@ -189,8 +203,8 @@ LDSOFLAGS="$FFMPEG_LDSOFLAGS" \
   --enable-protocol=file,pipe \
   --enable-filter=blend,vflip,format,scale,aformat,anull,aresample,null \
   --enable-bsf=extract_extradata,h264_mp4toannexb,hevc_mp4toannexb \
-  --extra-cflags="-I$PREFIX/include" \
-  --extra-ldflags="-L$PREFIX/lib" \
+  --extra-cflags="-I$PREFIX_NATIVE/include" \
+  --extra-ldflags="-L$PREFIX_NATIVE/lib" \
   "${LOADER_FLAGS[@]}" \
   "${HW_FLAGS[@]}"
 make -j"$NJOBS"
@@ -202,8 +216,8 @@ rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"/{bin,lib,include}
 
 # Binaries
-cp "$PREFIX/bin/ffmpeg" "$INSTALL_DIR/bin/"
-cp "$PREFIX/bin/ffprobe" "$INSTALL_DIR/bin/"
+cp "$PREFIX/bin/ffmpeg$EXE" "$INSTALL_DIR/bin/"
+cp "$PREFIX/bin/ffprobe$EXE" "$INSTALL_DIR/bin/"
 
 # Shared libraries only (x264/zlib/libva/libdrm stay static and are linked in).
 # Ship the SONAME file and an INPUT linker script for the unversioned name so
@@ -244,6 +258,9 @@ elif [ "$PLATFORM" = "Darwin" ]; then
   for lib in "${FFMPEG_LIBS[@]}"; do
     copy_darwin_ffmpeg_lib "$lib"
   done
+elif [ -n "$WINDOWS" ]; then
+  # static: ship ffmpeg plus the x264/zlib archives it was linked against
+  cp "$PREFIX"/lib/*.a "$INSTALL_DIR/lib/"
 fi
 
 # Headers
@@ -252,7 +269,7 @@ for dir in libavformat libavcodec libavutil libswresample; do
 done
 
 # Strip binaries and shared libraries
-strip "$INSTALL_DIR/bin/ffmpeg" "$INSTALL_DIR/bin/ffprobe" 2>/dev/null || true
+strip "$INSTALL_DIR/bin/ffmpeg$EXE" "$INSTALL_DIR/bin/ffprobe$EXE" 2>/dev/null || true
 strip "$INSTALL_DIR/lib/"*.so.* "$INSTALL_DIR/lib/"*.dylib 2>/dev/null || true
 
 echo "Installed ffmpeg to $INSTALL_DIR"
