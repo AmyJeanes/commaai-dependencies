@@ -1,3 +1,0 @@
-LIBRARY _raylib_cffi_desktop.pyd
-EXPORTS
-PyInit__raylib_cffi_desktop

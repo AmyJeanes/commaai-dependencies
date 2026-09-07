@@ -37,3 +37,6 @@ acados/acados/acados_template/
 acados/casadi/
 acados/casadi-venv/
 acados/casadi-wheel/
+
+# cffi build output on Windows
+raylib/Release/
