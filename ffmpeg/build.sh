@@ -162,6 +162,13 @@ if [ "$PLATFORM" = "Linux" ]; then
     --enable-hwaccel=h264_vulkan,hevc_vulkan
     --enable-encoder=h264_vulkan,hevc_vulkan
   )
+elif [ -n "$WINDOWS" ]; then
+  HW_FLAGS+=(
+    # Direct3D 11 video decoding (any GPU vendor; the mingw SDK headers are enough).
+    # The "2" hwaccels are the AV_HWDEVICE_TYPE_D3D11VA ones; they share objects with the legacy d3d11va ones
+    --enable-d3d11va
+    --enable-hwaccel=h264_d3d11va,h264_d3d11va2,hevc_d3d11va,hevc_d3d11va2
+  )
 elif [ "$PLATFORM" = "Darwin" ]; then
   FFMPEG_LDEXEFLAGS='-Wl,-rpath,@loader_path/../lib'
   LOADER_FLAGS+=(
