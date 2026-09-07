@@ -108,10 +108,7 @@ def build_ffi():
 
 def _use_mingw_compiler():
   """setuptools defaults to MSVC on Windows; point it at the GNU-style toolchain (MSYS2 clang64)."""
-  cfg = os.path.join(ROOT, "build_cffi_mingw.cfg")
-  with open(cfg, "w") as f:
-    f.write("[build_ext]\ncompiler = mingw32\n")
-  os.environ["DIST_EXTRA_CONFIG"] = cfg
+  os.environ["DIST_EXTRA_CONFIG"] = os.path.join(ROOT, "build_cffi_mingw.cfg")
   os.environ.setdefault("CC", "clang")
   os.environ.setdefault("CXX", "clang++")
 
