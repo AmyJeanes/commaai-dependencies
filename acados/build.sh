@@ -93,6 +93,13 @@ if [ -f "$TEMPLATE_DIR/gnsf/check_reformulation.py" ]; then
   rm -f "$TEMPLATE_DIR/gnsf/check_reformulation.py.bak"
 fi
 
+# render_template() quotes the tera arguments but not the t_renderer path, and
+# runs it through cmd.exe (os.system), which strips the command's outer quote
+# pair. Quote the executable and wrap the whole command so a spaced path works.
+sed -i.bak "s|f\"{tera_path} |f\"'{tera_path}' |" "$TEMPLATE_DIR/utils.py"
+sed -i "s|os_cmd = \(os_cmd\.replace.*\)|os_cmd = '\"' + \1 + '\"'|" "$TEMPLATE_DIR/utils.py"
+rm -f "$TEMPLATE_DIR/utils.py.bak"
+
 # build tera renderer (needs cargo)
 if [ -n "$WINDOWS" ]; then
   # no rust toolchain requirement on Windows: fetch the release binary acados_template pins
